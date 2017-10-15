@@ -13,6 +13,7 @@
 #include "wilton/wilton_cron.h"
 
 #include "wilton/support/misc.hpp"
+#include "wilton/support/logging.hpp"
 #include "wilton/support/registrar.hpp"
 #include "wilton/support/payload_handle_registry.hpp"
 
