@@ -51,7 +51,7 @@ support::buffer start(sl::io::span<const char> data) {
     if (sl::json::type::nullt == rcallback.get().json_type()) throw support::exception(TRACEMSG(
             "Required parameter 'callbackScript' not specified"));
     if (rexpr.get().empty()) throw support::exception(TRACEMSG(
-            "Required parameter 'url' not specified"));
+            "Required parameter 'expression' not specified"));
     const sl::json::value& callback = rcallback.get();
     const std::string& expr = rexpr.get();
     std::string* str_to_pass = new std::string(callback.dumps());
