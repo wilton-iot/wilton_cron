@@ -70,7 +70,7 @@ support::buffer start(sl::io::span<const char> data) {
                         str->c_str(), static_cast<int> (str->length()),
                         std::addressof(out), std::addressof(out_len));
                 if (nullptr != err) {
-                    support::log_error("wilton.cron", TRACEMSG(err));
+                    support::log_error("wilton.CronTask", TRACEMSG(err));
                     wilton_free(err);
                 }
             });

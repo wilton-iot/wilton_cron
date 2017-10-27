@@ -13,8 +13,16 @@
 #include "staticlib/utils.hpp"
 
 #include "wilton/support/alloc_copy.hpp"
+#include "wilton/support/handle_registry.hpp"
+#include "wilton/support/logging.hpp"
 
 #include "cron_task.hpp"
+
+namespace { // anonymous
+
+const std::string LOGGER = std::string("wilton.CronTask");
+
+} // namespace
 
 struct wilton_CronTask {
 private:
@@ -43,12 +51,13 @@ char* wilton_CronTask_start(
             "Invalid 'cronexpr_len' parameter specified: [" + sl::support::to_string(cronexpr_len) + "]"));
     if (nullptr == task_cb) return wilton::support::alloc_copy(TRACEMSG("Null 'task_cb' parameter specified"));
     try {
-        uint16_t cronexpr_len_u16 = static_cast<uint16_t> (cronexpr_len);
-        std::string cronexpr_str{cronexpr, cronexpr_len_u16};
-        wilton::cron::cron_task cron{cronexpr_str, [task_ctx, task_cb]{
+        auto cronexpr_str = std::string(cronexpr, static_cast<uint16_t> (cronexpr_len));
+        wilton::support::log_debug(LOGGER, "Creating Cron task, expression: [" + cronexpr_str + "] ...");
+        auto cron = wilton::cron::cron_task(cronexpr_str, [task_ctx, task_cb]{
             task_cb(task_ctx);
-        }};
-        wilton_CronTask* cron_ptr = new wilton_CronTask{std::move(cron)};
+        });
+        wilton_CronTask* cron_ptr = new wilton_CronTask(std::move(cron));
+        wilton::support::log_debug(LOGGER, "Cron task created successfully, handle: [" + wilton::support::strhandle(cron_ptr) + "]");
         *cron_out = cron_ptr;
         return nullptr;
     } catch (const std::exception& e) {
@@ -60,8 +69,10 @@ char* wilton_CronTask_stop(
         wilton_CronTask* cron) {
     if (nullptr == cron) return wilton::support::alloc_copy(TRACEMSG("Null 'cron' parameter specified"));
     try {
+        wilton::support::log_debug(LOGGER, "Stopping Cron task, handle: [" + wilton::support::strhandle(cron) + "] ...");
         cron->impl().stop();
         delete cron;
+        wilton::support::log_debug(LOGGER, "Cron task stopped successfully.");
         return nullptr;
     } catch (const std::exception& e) {
         return wilton::support::alloc_copy(TRACEMSG(e.what() + "\nException raised"));
