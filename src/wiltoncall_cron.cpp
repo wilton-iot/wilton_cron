@@ -22,11 +22,11 @@ namespace cron {
 
 namespace { //anonymous
 
-support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>& static_registry() {
-    static support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>> registry{
+std::shared_ptr<support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>> shared_registry() {
+    static auto registry = std::make_shared<support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>>(
         [] (wilton_CronTask* cron) STATICLIB_NOEXCEPT {
             wilton_CronTask_stop(cron);
-        }};
+        });
     return registry;
 }
 
@@ -75,7 +75,8 @@ support::buffer start(sl::io::span<const char> data) {
                 }
             });
     if (nullptr != err) support::throw_wilton_error(err, TRACEMSG(err));
-    int64_t handle = static_registry().put(cron, std::unique_ptr<std::string>(str_to_pass));
+    auto reg = shared_registry();
+    int64_t handle = reg->put(cron, std::unique_ptr<std::string>(str_to_pass));
     return support::make_json_buffer({
         { "cronHandle", handle}
     });
@@ -96,13 +97,14 @@ support::buffer stop(sl::io::span<const char> data) {
     if (-1 == handle) throw support::exception(TRACEMSG(
             "Required parameter 'cronHandle' not specified"));
     // get handle
-    auto pa = static_registry().remove(handle);
+    auto reg = shared_registry();
+    auto pa = reg->remove(handle);
     if (nullptr == pa.first) throw support::exception(TRACEMSG(
             "Invalid 'cronHandle' parameter specified"));
     // call wilton
     char* err = wilton_CronTask_stop(pa.first);
     if (nullptr != err) {
-        static_registry().put(pa.first, std::move(pa.second));
+        reg->put(pa.first, std::move(pa.second));
         support::throw_wilton_error(err, TRACEMSG(err));
     }
     return support::make_empty_buffer();
