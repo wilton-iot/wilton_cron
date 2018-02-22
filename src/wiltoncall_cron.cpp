@@ -123,7 +123,7 @@ support::buffer stop(sl::io::span<const char> data) {
         reg->put(pa.first, std::move(pa.second));
         support::throw_wilton_error(err, TRACEMSG(err));
     }
-    return support::make_empty_buffer();
+    return support::make_null_buffer();
 }
 
 } // namespace

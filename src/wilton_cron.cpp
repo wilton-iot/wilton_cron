@@ -28,7 +28,7 @@
 #include "staticlib/config.hpp"
 #include "staticlib/utils.hpp"
 
-#include "wilton/support/alloc_copy.hpp"
+#include "wilton/support/alloc.hpp"
 #include "wilton/support/handle_registry.hpp"
 #include "wilton/support/logging.hpp"
 
