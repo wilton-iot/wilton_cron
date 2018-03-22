@@ -21,8 +21,8 @@
  * Created on January 11, 2017, 9:19 AM
  */
 
-#include <atomic>
 #include <memory>
+#include <string>
 
 #include "staticlib/utils.hpp"
 
@@ -38,6 +38,7 @@ namespace cron {
 
 namespace { //anonymous
 
+// initialized from wilton_module_init
 std::shared_ptr<support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>> shared_registry() {
     static auto registry = std::make_shared<support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>>(
         [] (wilton_CronTask* cron) STATICLIB_NOEXCEPT {
@@ -131,6 +132,7 @@ support::buffer stop(sl::io::span<const char> data) {
 
 extern "C" char* wilton_module_init() {
     try {
+        wilton::cron::shared_registry();
         wilton::support::register_wiltoncall("cron_start", wilton::cron::start);
         wilton::support::register_wiltoncall("cron_stop", wilton::cron::stop);
         return nullptr;
