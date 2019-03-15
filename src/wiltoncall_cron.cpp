@@ -23,6 +23,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "staticlib/utils.hpp"
 
@@ -31,19 +32,24 @@
 #include "wilton/support/misc.hpp"
 #include "wilton/support/logging.hpp"
 #include "wilton/support/registrar.hpp"
-#include "wilton/support/payload_handle_registry.hpp"
+#include "wilton/support/unique_handle_registry.hpp"
 
 namespace wilton {
 namespace cron {
 
 namespace { //anonymous
 
+using reg_entry_type = std::pair<wilton_CronTask*, std::unique_ptr<std::string>>;
+
+void reg_entry_deleter(reg_entry_type* ptr) {
+    wilton_CronTask_stop(ptr->first);
+    delete ptr;
+}
+
 // initialized from wilton_module_init
-std::shared_ptr<support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>> shared_registry() {
-    static auto registry = std::make_shared<support::payload_handle_registry<wilton_CronTask, std::unique_ptr<std::string>>>(
-        [] (wilton_CronTask* cron) STATICLIB_NOEXCEPT {
-            wilton_CronTask_stop(cron);
-        });
+std::shared_ptr<support::unique_handle_registry<reg_entry_type>> cron_registry() {
+    static auto registry = std::make_shared<
+            support::unique_handle_registry<reg_entry_type>>(reg_entry_deleter);
     return registry;
 }
 
@@ -92,8 +98,9 @@ support::buffer start(sl::io::span<const char> data) {
                 }
             });
     if (nullptr != err) support::throw_wilton_error(err, TRACEMSG(err));
-    auto reg = shared_registry();
-    int64_t handle = reg->put(cron, std::unique_ptr<std::string>(str_to_pass));
+    auto reg = cron_registry();
+    auto en_ptr = new reg_entry_type(cron, std::unique_ptr<std::string>(str_to_pass));
+    int64_t handle = reg->put(en_ptr);
     return support::make_json_buffer({
         { "cronHandle", handle}
     });
@@ -114,16 +121,18 @@ support::buffer stop(sl::io::span<const char> data) {
     if (-1 == handle) throw support::exception(TRACEMSG(
             "Required parameter 'cronHandle' not specified"));
     // get handle
-    auto reg = shared_registry();
+    auto reg = cron_registry();
     auto pa = reg->remove(handle);
-    if (nullptr == pa.first) throw support::exception(TRACEMSG(
+    if (nullptr == pa->first) throw support::exception(TRACEMSG(
             "Invalid 'cronHandle' parameter specified"));
     // call wilton
-    char* err = wilton_CronTask_stop(pa.first);
+    char* err = wilton_CronTask_stop(pa->first);
     if (nullptr != err) {
-        reg->put(pa.first, std::move(pa.second));
+        reg->put(pa);
         support::throw_wilton_error(err, TRACEMSG(err));
     }
+    // cleanup
+    delete pa;
     return support::make_null_buffer();
 }
 
@@ -132,7 +141,7 @@ support::buffer stop(sl::io::span<const char> data) {
 
 extern "C" char* wilton_module_init() {
     try {
-        wilton::cron::shared_registry();
+        wilton::cron::cron_registry();
         wilton::support::register_wiltoncall("cron_start", wilton::cron::start);
         wilton::support::register_wiltoncall("cron_stop", wilton::cron::stop);
         return nullptr;
