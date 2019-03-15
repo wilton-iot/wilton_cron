@@ -41,15 +41,13 @@ namespace { //anonymous
 
 using reg_entry_type = std::pair<wilton_CronTask*, std::unique_ptr<std::string>>;
 
-void reg_entry_deleter(reg_entry_type* ptr) {
-    wilton_CronTask_stop(ptr->first);
-    delete ptr;
-}
-
 // initialized from wilton_module_init
 std::shared_ptr<support::unique_handle_registry<reg_entry_type>> cron_registry() {
-    static auto registry = std::make_shared<
-            support::unique_handle_registry<reg_entry_type>>(reg_entry_deleter);
+    static auto registry = std::make_shared<support::unique_handle_registry<reg_entry_type>>(
+            [](reg_entry_type* pa) STATICLIB_NOEXCEPT {
+                wilton_CronTask_stop(pa->first);
+                delete pa;
+            });
     return registry;
 }
 
